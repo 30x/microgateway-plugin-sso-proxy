@@ -1,0 +1,39 @@
+{
+  "name": "microgateway-plugin-sso-proxy",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Provide transparent SSO authentication services to components behind this proxy.",
+  "main": "lib/index.js",
+  "dependencies": {
+    "config": "^1.19.0",
+    "connect": "^3.4.1",
+    "cookie": "^0.2.3",
+    "debug": "^2.2.0",
+    "js-yaml": "^3.5.3",
+    "jsonwebtoken": "^5.5.4",
+    "passport": "^0.3.2",
+    "passport-oauth": "^1.0.0",
+    "passport-oauth2-refresh": "^1.0.0"
+  },
+  "devDependencies": {
+    "async": "^1.5.2",
+    "browser-sync": "^2.10.0",
+    "cookie": "^0.2.3",
+    "coveralls": "^2.11.4",
+    "istanbul": "^0.4.0",
+    "lodash": "^4.3.0",
+    "mocha": "^2.3.3",
+    "pem": "^1.8.1",
+    "request": "^2.67.0",
+    "should": "^8.2.2",
+    "supertest": "^1.0.0"
+  },
+  "scripts": {
+    "start": "bin/sso-proxy.js",
+    "test": "node_modules/mocha/bin/_mocha --recursive test",
+    "coverage": "DEBUG=* node node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha -- test",
+    "coveralls": "node node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha --report lcovonly -- test && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js --verbose"
+  },
+  "author": "Scott Ganyo <sganyo@apigee.com>",
+  "license": "Apache-2.0"
+}
