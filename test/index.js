@@ -1,6 +1,5 @@
 'use strict'
 
-process.env.NODE_ENV = 'test'
 const config = require('config')
 
 const should = require('should')
@@ -14,20 +13,24 @@ const cookie = require('cookie')
 describe('oauth-proxy', () => {
 
   before(function(done) {
-    Promise
-      .all([
-        createKeys(),
-        target.start()
-      ])
-      .then(results => {
-        this.keys = results[0]
-        this.target = results[1]
+    createKeys().then(keys => {
+      this.keys = keys
+      target.start(keys).then(target => {
+        this.target = target
+
+        const targetPort = this.target.address().port
+        if (process.env.NODE_ENV === 'test') {
+          config.oauth.authorizationURL = `http://localhost:${targetPort}/oauth/authorize`
+          config.oauth.tokenURL = `http://localhost:${targetPort}/oauth/token`
+        }
 
         this.config = config
         this.config.public_key = this.keys.publicKey
 
+        this.locationRedirect = new RegExp(this.config.oauth.authorizationURL)
+
         proxy
-          .start(this.config, `http://localhost:${this.target.address().port}`)
+          .start(this.config, `http://localhost:${targetPort}`)
           .then(server => {
             this.server = server
           })
@@ -36,6 +39,11 @@ describe('oauth-proxy', () => {
       .catch(err => {
         console.log(err.stack)
       })
+    })
+  })
+
+  it('should reject invalid settings', function() {
+    (() => proxy.start({})).should.throw(Error)
   })
 
   it('should allow no auth GET to unsecured endpoint', function(done) {
@@ -45,46 +53,57 @@ describe('oauth-proxy', () => {
       .end(done)
   })
 
-  // todo: must this be a 401 w/ javascript redirect? does it differ between browser & api?
-  it('should intercept 401 response and return redirect to auth', function(done) {
-    const location = new RegExp(this.config.oauth.authorizationURL)
+  it('should intercept 401 response from target and start auth flow', function(done) {
     request(this.server)
       .get('/secured')
       .expect(302)
-      .expect('location', location)
+      .expect('location', this.locationRedirect)
       .expect('set-cookie', /redirect_path/)
-      .end((err, res) => {
-        if (err) return done(err)
-        done()
-      })
+      .end(done)
   })
 
   describe('api header', () => {
 
-    it('should allow valid auth GET to unsecured endpoint', function(done) {
+    it('should allow valid access token to access endpoint', function(done) {
+      const token = createJWTToken(this.keys);
       request(this.server)
         .get('/unsecured')
-        .set('Authorization', `Bearer ${createJWTToken(this.keys)}`)
+        .set('Authorization', `Bearer ${token}`)
         .expect(200)
         .end(done)
     })
 
-    it('should reject expired requests with no refresh token', function(done) {
-      const token = createJWTToken(this.keys, 0)
+    it('should reject invalid authorization header', function(done) {
       request(this.server)
         .get('/secured')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', 'Like, whatever, man')
+        .expect(400)
+        .end(done)
+    })
+
+    it('should reject invalid access token', function(done) {
+      request(this.server)
+        .get('/secured')
+        .set('Authorization', 'Bearer Like, whatever, man')
         .expect(401)
         .end(done)
     })
 
-    // todo: header expectation for refresh token?
+    it('should start auth flow for expired access token with no refresh token', function(done) {
+      const token = createJWTToken(this.keys, 0)
+      request(this.server)
+        .get('/secured')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(302)
+        .expect('location', this.locationRedirect)
+        .expect('set-cookie', /redirect_path/)
+        .end(done)
+    })
   })
 
   describe('browser cookie', () => {
 
-    it('should allow valid auth GET to unsecured endpoint', function(done) {
-
+    it('should allow valid access token to access endpoint', function(done) {
       const token = createJWTToken(this.keys);
       var cookieHeader = cookie.serialize('access_token', token)
       request(this.server)
@@ -94,35 +113,118 @@ describe('oauth-proxy', () => {
         .end(done)
     })
 
-    it('should reject expired requests with no refresh token', function(done) {
-      const token = createJWTToken(this.keys, 0)
-      var cookieHeader = cookie.serialize('access_token', token)
-      request(this.server)
-        .get('/secured')
-        .set('Cookie', cookieHeader)
-        .expect(401)
-        .end(done)
-    })
-
-    // todo: verify this actually happened
-    it('should try to refresh token if token has expired', function(done) {
+    it('should use refresh token if access token has expired', function(done) {
       const token = createJWTToken(this.keys, 0)
       const refreshToken = createJWTToken(this.keys)
       var cookieHeader = cookie.serialize('access_token', token) + ';' + cookie.serialize('refresh_token', refreshToken)
       request(this.server)
         .get('/secured')
         .set('Cookie', cookieHeader)
-        .expect(302)
+        .expect(200)
+        .expect('set-cookie', /access_token/)
+        .expect('set-cookie', /refresh_token/)
         .end(done)
     })
 
-    it('should start auth flow for expired requests when no refresh token')
-    it('should start auth flow for expired requests when refresh token fails')
-    it('should expose and handle the auth flow callback')
+    it('should start auth flow for expired access token when no refresh token', function(done) {
+      const token = createJWTToken(this.keys, 0)
+      var cookieHeader = cookie.serialize('access_token', token)
+      request(this.server)
+        .get('/secured')
+        .set('Cookie', cookieHeader)
+        .expect(302)
+        .expect('location', this.locationRedirect)
+        .expect('set-cookie', /redirect_path/)
+        .end(done)
+    })
 
-    it('should set cookies for token and refresh token on success')
-    it('should accept cookies for token and refresh token')
+    it('should start auth flow for expired access token and expired refresh token', function(done) {
+      const token = createJWTToken(this.keys, 0)
+      const refreshToken = createJWTToken(this.keys, 0)
+      var cookieHeader = cookie.serialize('access_token', token) + ';' + cookie.serialize('refresh_token', refreshToken)
+      request(this.server)
+        .get('/secured')
+        .set('Cookie', cookieHeader)
+        .expect(302)
+        .expect('location', this.locationRedirect)
+        .expect('set-cookie', /redirect_path/)
+        .end(done)
+    })
+
+    it('should start auth flow for expired requests when invalid refresh token', function(done) {
+      const token = createJWTToken(this.keys, 0)
+      var cookieHeader = cookie.serialize('access_token', token) + ';' + cookie.serialize('refresh_token', 'Nothing good')
+      request(this.server)
+        .get('/secured')
+        .set('Cookie', cookieHeader)
+        .expect(302)
+        .expect('location', this.locationRedirect)
+        .expect('set-cookie', /redirect_path/)
+        .end(done)
+    })
+
+    it('should properly handle the oauth flow and redirect to original uri if possible', function(done) {
+      request.agent(this.server)
+        .get('/secured')
+        .redirects(2)
+        .expect(302)
+        .expect('location', '/secured')
+        .expect('set-cookie', /access_token/)
+        .expect('set-cookie', /refresh_token/)
+        .end(done)
+    })
+
+    it('should properly handle the entire auth flow', function(done) {
+      request.agent(this.server)
+        .get('/secured')
+        .redirects(6)
+        .expect(200)
+        .end((err, res) => {
+          res.text.should.eql('secured')
+          done(err)
+        })
+    })
   })
+
+  describe('bad oauth token endpoint', function() {
+
+    before(function(done) {
+      this.config.port = 0
+      this.config.oauth.tokenURL = 'http://localhost/oauth/token'
+
+      proxy
+        .start(this.config, `http://localhost:${this.target.address().port}`)
+        .then(server => {
+          this.server = server
+        })
+        .then(done)
+        .catch(err => {
+          console.log(err.stack)
+          done(err)
+        })
+    })
+
+    it('will fail to get access token', function(done) {
+      request(this.server)
+        .get('/secured')
+        .redirects(6)
+        .expect(500)
+        .end(done)
+    })
+
+    it('will fail to get refresh token', function(done) {
+      const token = createJWTToken(this.keys, 0)
+      const refreshToken = createJWTToken(this.keys, 1)
+      var cookieHeader = cookie.serialize('access_token', token) + ';' + cookie.serialize('refresh_token', refreshToken)
+      request(this.server)
+        .get('/secured')
+        .redirects(6)
+        .set('Cookie', cookieHeader)
+        .expect(500)
+        .end(done)
+    })
+  })
+
 })
 
 function createJWTToken(keys, expiresIn, includeRefresh) {
