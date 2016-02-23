@@ -6,6 +6,8 @@ Provides transparent SSO authentication services to components behind this proxy
 
 [![Build Status](https://travis-ci.org/30x/microgateway-plugin-sso-proxy.svg?branch=master)](https://travis-ci.org/30x/microgateway-plugin-sso-proxy)
 
+[![Coverage Status](https://coveralls.io/repos/github/30x/microgateway-plugin-sso-proxy/badge.svg?branch=master)](https://coveralls.io/github/30x/microgateway-plugin-sso-proxy?branch=master)
+
 ### Usage:
 
  * `npm install`
