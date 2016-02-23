@@ -4,6 +4,8 @@
 
 Provides transparent SSO authentication services to components behind this proxy. This is intended to run as a plugin for microgateway, but the microgateway plugin system needs a bit of enhancement before it can do that. Meanwhile, it will run standalone:
 
+[![Build Status](https://travis-ci.org/30x/microgateway-plugin-sso-proxy.svg?branch=master)](https://travis-ci.org/30x/microgateway-plugin-sso-proxy)
+
 ### Usage:
 
  * `npm install`
