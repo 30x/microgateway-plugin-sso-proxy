@@ -34,5 +34,4 @@ node_modules
 *.sqlite3
 
 config/default.yaml
-config/test.yaml
 config/production.yaml

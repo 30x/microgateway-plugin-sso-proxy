@@ -1,0 +1,8 @@
+port: 3000
+target:
+oauth:
+  clientID: id
+  clientSecret: secret
+  authorizationURL: http://localhost:3000/oauth/authorize
+  tokenURL: http://localhost:3000/oauth/token
+  callbackURL: http://localhost:3000/auth/sso/callback
