@@ -3,38 +3,26 @@
 const connect = require('connect')
 const http = require('http')
 const debug = require('debug')('test:proxy')
-const url = require('url')
+const edgemicro = require('edgemicro')
 
-module.exports.start = (config, target) => {
+module.exports.start = (gatewayConfig) => {
 
-  const plugin = require('../../lib').init(config)
-
-  // this is the minimal configuration required for gateway to run...
-  const conf = { edgemicro: { plugins: {} } }
-  const noop = () => {}
-  const stats = { incrementStatusCount: noop, incrementResponseCount: noop, incrementRequestCount: noop }
-  const logger = { info: noop, warn: noop }
-  const calltarget = require('./gateway')([plugin], conf, logger, stats)
-  const proxy = {
-    parsedUrl: url.parse(target),
-    basePathLength: 1,
-    secure: false,
-    agent: new http.Agent({ maxSockets: 1,  keepAlive: true })
-  }
-
-  const app = connect()
-
-  app.use((req, res, next) => {
-    res.proxy = proxy
-    req.reqUrl = url.parse(req.url, true);
-    calltarget(req, res, next)
-  })
+  const gateway = edgemicro(gatewayConfig)
 
   return new Promise((resolve, reject) => {
-    const server = http.createServer(app)
-    server.listen(config.port || 0, (err) => {
+    debug('starting gateway')
+
+    gateway.start((err, server) => {
+      debug('gateway err %o', err)
       if (err) return reject(err)
-      debug(`proxy listening on port ${server.address().port}`)
+
+      gatewayConfig.sso.oauth.callbackURL = gatewayConfig.sso.oauth.callbackURL.replace(/XXXX/, server.address().port)
+      //gatewayConfig.sso.oauth.callbackURL = `http://localhost:${server.address().port}/auth/sso/callback`
+
+      const plugin = require('../../lib')
+      gateway.addPlugin('sso', plugin)
+
+      debug('gateway started')
       return resolve(server)
     })
   })

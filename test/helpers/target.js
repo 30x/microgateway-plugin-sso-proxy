@@ -5,7 +5,7 @@ const http = require('http')
 const debug = require('debug')('plugin:sso-proxy')
 const jwt = require('jsonwebtoken')
 const authHeaderRegex = /Bearer (.+)/
-const bodyParser = require('body-parser').urlencoded()
+const bodyParser = require('body-parser').urlencoded({ extended: false })
 const jwtOptions = {
   algorithms: ['RS256'],
   ignoreExpiration: false,
@@ -45,7 +45,8 @@ module.exports.start = (keys) => {
 
       case '/oauth/authorize':
 
-        res.writeHead(302, { location: 'http://localhost:3000/auth/sso/callback?code=l33t' })
+        var callbackUrl = require('config').sso.oauth.callbackURL
+        res.writeHead(302, { location: `${callbackUrl}?code=l33t` })
         res.end()
         break
 

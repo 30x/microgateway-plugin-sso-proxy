@@ -13,32 +13,36 @@ const cookie = require('cookie')
 describe('oauth-proxy', () => {
 
   before(function(done) {
-    createKeys().then(keys => {
-      this.keys = keys
-      target.start(keys).then(target => {
-        this.target = target
 
-        const targetPort = this.target.address().port
-        if (process.env.NODE_ENV === 'test') {
-          config.oauth.authorizationURL = `http://localhost:${targetPort}/oauth/authorize`
-          config.oauth.tokenURL = `http://localhost:${targetPort}/oauth/token`
-        }
+    this.config = config
+    const pluginConfig = this.config.sso
 
-        this.config = config
-        this.config.public_key = this.keys.publicKey
+    createKeys()
+      .then(keys => {
+        this.keys = keys
+        pluginConfig.public_key = this.keys.publicKey
 
-        this.locationRedirect = new RegExp(this.config.oauth.authorizationURL)
+        target.start(keys)
+          .then(target => {
+            this.target = target
+            const targetPort = this.target.address().port
 
-        proxy
-          .start(this.config, `http://localhost:${targetPort}`)
-          .then(server => {
-            this.server = server
+            pluginConfig.oauth.authorizationURL = pluginConfig.oauth.authorizationURL.replace(/XXXX/, targetPort)
+            pluginConfig.oauth.tokenURL = pluginConfig.oauth.tokenURL.replace(/XXXX/, targetPort)
+            config.proxies[0].url = `http://localhost:${targetPort}`
+
+            this.locationRedirect = new RegExp(pluginConfig.oauth.authorizationURL)
+
+            proxy
+              .start(this.config)
+              .then(server => {
+                this.server = server
+              })
+              .then(done)
           })
-          .then(done)
-      })
-      .catch(err => {
-        console.log(err.stack)
-      })
+          .catch(err => {
+            console.log(err.stack)
+          })
     })
   })
 
@@ -163,12 +167,12 @@ describe('oauth-proxy', () => {
         .end(done)
     })
 
-    it('should properly handle the oauth flow and redirect to original uri if possible', function(done) {
+    it('should properly handle the oauth flow and set redirect to original uri', function(done) {
       request.agent(this.server)
-        .get('/secured')
+        .get('/secured?foo=bar')
         .redirects(2)
         .expect(302)
-        .expect('location', '/secured')
+        .expect('location', '/secured?foo=bar')
         .expect('set-cookie', /access_token/)
         .expect('set-cookie', /refresh_token/)
         .end(done)
@@ -189,8 +193,7 @@ describe('oauth-proxy', () => {
   describe('bad oauth token endpoint', function() {
 
     before(function(done) {
-      this.config.port = 0
-      this.config.oauth.tokenURL = 'http://localhost/oauth/token'
+      this.config.sso.oauth.tokenURL = 'http://localhost/bad/oauth/endpoint'
 
       proxy
         .start(this.config, `http://localhost:${this.target.address().port}`)

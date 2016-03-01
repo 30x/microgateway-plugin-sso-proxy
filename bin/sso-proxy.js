@@ -8,11 +8,12 @@ const config = require('config')
 getTarget()
   .then(target => {
     console.log(`proxy target: ${target}`)
+    config.proxies[0].url = target
     proxy
       .start(config, target)
       .then(server => {
         this.server = server
-        console.log(`proxy port ${config.port}`)
+        console.log(`proxy port ${server.address().port}`)
       })
   })
   .catch(err => {
@@ -23,7 +24,7 @@ getTarget()
 
 function getTarget() {
   return new Promise((resolve, reject) => {
-    if (config.target) return resolve(config.target)
+    if (config.proxies[0].url) return resolve(config.proxies[0].url)
 
     return require('../test/helpers/target')
       .start()
