@@ -26,8 +26,9 @@ function getTarget() {
   return new Promise((resolve, reject) => {
     if (config.proxies[0].url) return resolve(config.proxies[0].url)
 
+    const keys = { publicKey: config.sso.public_key }
     return require('../test/helpers/target')
-      .start()
+      .start(keys)
       .then(target => {
         console.log('started dummy target')
         resolve(`http://localhost:${target.address().port}`)
