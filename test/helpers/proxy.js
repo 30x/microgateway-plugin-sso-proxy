@@ -17,7 +17,6 @@ module.exports.start = (gatewayConfig) => {
       if (err) return reject(err)
 
       gatewayConfig.sso.oauth.callbackURL = gatewayConfig.sso.oauth.callbackURL.replace(/XXXX/, server.address().port)
-      //gatewayConfig.sso.oauth.callbackURL = `http://localhost:${server.address().port}/auth/sso/callback`
 
       const plugin = require('../../lib')
       gateway.addPlugin('sso', plugin)
