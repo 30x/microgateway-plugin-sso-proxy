@@ -3,11 +3,11 @@
 const connect = require('connect')
 const http = require('http')
 const debug = require('debug')('test:proxy')
-const edgemicro = require('edgemicro')
+const microgateway = require('microgateway-core')
 
 module.exports.start = (gatewayConfig) => {
 
-  const gateway = edgemicro(gatewayConfig)
+  const gateway = microgateway(gatewayConfig)
 
   return new Promise((resolve, reject) => {
     debug('starting gateway')
