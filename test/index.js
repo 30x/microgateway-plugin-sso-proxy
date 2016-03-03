@@ -9,6 +9,8 @@ const proxy = require('./helpers/proxy')
 const pem = require('pem')
 const jwt = require('jsonwebtoken')
 const cookie = require('cookie')
+const url = require('url')
+const superagent = require('superagent')
 
 describe('oauth-proxy', () => {
 
@@ -58,12 +60,50 @@ describe('oauth-proxy', () => {
   })
 
   it('should intercept 401 response from target and start auth flow', function(done) {
+    const uri = '/secured'
+    request(this.server)
+      .get(uri)
+      .expect(401)
+      .expect('location', this.locationRedirect)
+      .end((err, res) => {
+        if (err) return done(err)
+
+        const redirectUrl = res.headers['location']
+
+        // check restart uri
+        const parsedUrl = url.parse(redirectUrl, true)
+        parsedUrl.query.state.should.eql(uri)
+
+        var lines = res.text.split(/\r?\n/)
+        lines[0].should.eql(`<head><meta http-equiv="refresh" content="0; url=${redirectUrl}"></head>`)
+        lines[1].should.eql(`<a href="${redirectUrl}">${redirectUrl}</a>`)
+
+        done()
+      })
+  })
+
+  it('should start auth flow with custom restart header', function(done) {
+    const uri = '/whatever'
     request(this.server)
       .get('/secured')
-      .expect(302)
+      .set('x-restart-url', uri)
+      .expect(401)
       .expect('location', this.locationRedirect)
-      .expect('set-cookie', /redirect_path/)
-      .end(done)
+      .end((err, res) => {
+        if (err) return done(err)
+
+        const redirectUrl = res.headers['location']
+
+        // check restart uri
+        const parsedUrl = url.parse(redirectUrl, true)
+        parsedUrl.query.state.should.eql(uri)
+
+        var lines = res.text.split(/\r?\n/)
+        lines[0].should.eql(`<head><meta http-equiv="refresh" content="0; url=${redirectUrl}"></head>`)
+        lines[1].should.eql(`<a href="${redirectUrl}">${redirectUrl}</a>`)
+
+        done()
+      })
   })
 
   describe('api header', () => {
@@ -98,9 +138,8 @@ describe('oauth-proxy', () => {
       request(this.server)
         .get('/secured')
         .set('Authorization', `Bearer ${token}`)
-        .expect(302)
+        .expect(401)
         .expect('location', this.locationRedirect)
-        .expect('set-cookie', /redirect_path/)
         .end(done)
     })
   })
@@ -136,9 +175,8 @@ describe('oauth-proxy', () => {
       request(this.server)
         .get('/secured')
         .set('Cookie', cookieHeader)
-        .expect(302)
+        .expect(401)
         .expect('location', this.locationRedirect)
-        .expect('set-cookie', /redirect_path/)
         .end(done)
     })
 
@@ -149,9 +187,8 @@ describe('oauth-proxy', () => {
       request(this.server)
         .get('/secured')
         .set('Cookie', cookieHeader)
-        .expect(302)
+        .expect(401)
         .expect('location', this.locationRedirect)
-        .expect('set-cookie', /redirect_path/)
         .end(done)
     })
 
@@ -161,31 +198,67 @@ describe('oauth-proxy', () => {
       request(this.server)
         .get('/secured')
         .set('Cookie', cookieHeader)
-        .expect(302)
+        .expect(401)
         .expect('location', this.locationRedirect)
-        .expect('set-cookie', /redirect_path/)
         .end(done)
     })
 
     it('should properly handle the oauth flow and set redirect to original uri', function(done) {
-      request.agent(this.server)
-        .get('/secured?foo=bar')
-        .redirects(2)
-        .expect(302)
-        .expect('location', '/secured?foo=bar')
-        .expect('set-cookie', /access_token/)
-        .expect('set-cookie', /refresh_token/)
-        .end(done)
+      request(this.server)
+        .get('/secured')
+        .expect(401)
+        .expect('location', this.locationRedirect)
+        .end((err, res) => {
+          if (err) return done(err)
+
+          superagent.agent()
+            .get(res.headers['location'])
+            .redirects(1)
+            .end((err, res) => {
+              res.statusCode.should.eql(302)
+              res.headers['set-cookie'].should.matchAny(/access_token/)
+              res.headers['set-cookie'].should.matchAny(/refresh_token/)
+              done()
+            })
+        })
     })
 
     it('should properly handle the entire auth flow', function(done) {
-      request.agent(this.server)
+      request(this.server)
         .get('/secured')
-        .redirects(6)
-        .expect(200)
+        .expect(401)
+        .expect('location', this.locationRedirect)
         .end((err, res) => {
-          res.text.should.eql('secured')
-          done(err)
+          if (err) return done(err)
+
+          superagent.agent()
+            .get(res.headers['location'])
+            .redirects(2)
+            .end((err, res) => {
+              res.statusCode.should.eql(200)
+              res.text.should.eql('secured')
+              done()
+            })
+        })
+    })
+
+    it('should properly handle the oauth flow with redirect to custom url', function(done) {
+      request(this.server)
+        .get('/secured')
+        .set('x-restart-url', '/unsecured')
+        .expect(401)
+        .expect('location', this.locationRedirect)
+        .end((err, res) => {
+          if (err) return done(err)
+
+          superagent.agent()
+            .get(res.headers['location'])
+            .redirects(2)
+            .end((err, res) => {
+              res.statusCode.should.eql(200)
+              res.text.should.eql('unsecured')
+              done()
+            })
         })
     })
   })
@@ -210,9 +283,20 @@ describe('oauth-proxy', () => {
     it('will fail to get access token', function(done) {
       request(this.server)
         .get('/secured')
-        .redirects(6)
-        .expect(500)
-        .end(done)
+        .expect(401)
+        .expect('location', this.locationRedirect)
+        .end((err, res) => {
+          if (err) return done(err)
+
+          superagent.agent()
+            .get(res.headers['location'])
+            .redirects(1)
+            .end((err, res) => {
+              res.statusCode.should.eql(500)
+              res.body.error_description.message.should.eql('Failed to obtain access token')
+              done()
+            })
+        })
     })
 
     it('will fail to get refresh token', function(done) {
@@ -221,10 +305,21 @@ describe('oauth-proxy', () => {
       var cookieHeader = cookie.serialize('access_token', token) + ';' + cookie.serialize('refresh_token', refreshToken)
       request(this.server)
         .get('/secured')
-        .redirects(6)
         .set('Cookie', cookieHeader)
-        .expect(500)
-        .end(done)
+        .expect(401)
+        .expect('location', this.locationRedirect)
+        .end((err, res) => {
+          if (err) return done(err)
+
+          superagent.agent()
+            .get(res.headers['location'])
+            .redirects(1)
+            .end((err, res) => {
+              res.statusCode.should.eql(500)
+              res.body.error_description.message.should.eql('Failed to obtain access token')
+              done()
+            })
+        })
     })
   })
 
