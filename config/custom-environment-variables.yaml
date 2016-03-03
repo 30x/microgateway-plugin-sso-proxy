@@ -1,9 +1,11 @@
 # any of these SSO_* vars may be specified as environment variables
-port: SSO_PORT
-public_key: SSO_PUBLIC_KEY
-oauth:
-  clientID: SSO_CLIENT_ID
-  clientSecret: SSO_CLIENT_SECRET
-  authorizationURL: SSO_AUTH_URL
-  tokenURL: SSO_TOKEN_URL
-  callbackURL: SSO_CALLBACK_URL
+edgemicro:
+  port: SSO_PORT
+sso:
+  public_key: SSO_PUBLIC_KEY
+  oauth:
+    clientID: SSO_CLIENT_ID
+    clientSecret: SSO_CLIENT_SECRET
+    authorizationURL: SSO_AUTH_URL
+    tokenURL: SSO_TOKEN_URL
+    callbackURL: SSO_CALLBACK_URL

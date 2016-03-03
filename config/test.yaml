@@ -1,8 +1,15 @@
-port: 3000
-target:
-oauth:
-  clientID: id
-  clientSecret: secret
-  authorizationURL: http://localhost:3000/oauth/authorize
-  tokenURL: http://localhost:3000/oauth/token
-  callbackURL: http://localhost:3000/auth/sso/callback
+edgemicro:
+  port: 0
+  logging:
+    level: 'warn'
+proxies:
+- base_path: '/'
+  url:
+sso:
+  public_key:
+  oauth:
+    clientID: id
+    clientSecret: secret
+    authorizationURL: http://localhost:XXXX/oauth/authorize
+    tokenURL: http://localhost:XXXX/oauth/token
+    callbackURL: http://localhost:XXXX/auth/sso/callback

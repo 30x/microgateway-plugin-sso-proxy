@@ -13,7 +13,8 @@
     "jsonwebtoken": "^5.5.4",
     "passport": "^0.3.2",
     "passport-oauth": "^1.0.0",
-    "passport-oauth2-refresh": "^1.0.0"
+    "passport-oauth2-refresh": "^1.0.0",
+    "microgateway-core": "https://github.com/apigee/microgateway-core.git"
   },
   "devDependencies": {
     "async": "^1.5.2",

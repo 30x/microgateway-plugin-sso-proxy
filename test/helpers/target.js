@@ -5,7 +5,7 @@ const http = require('http')
 const debug = require('debug')('plugin:sso-proxy')
 const jwt = require('jsonwebtoken')
 const authHeaderRegex = /Bearer (.+)/
-const bodyParser = require('body-parser').urlencoded()
+const bodyParser = require('body-parser').urlencoded({ extended: false })
 const jwtOptions = {
   algorithms: ['RS256'],
   ignoreExpiration: false,
@@ -20,7 +20,7 @@ module.exports.start = (keys) => {
 
   app.use((req, res, next) => {
 
-    debug('target hit %s %s %s', req.method, req._parsedUrl.path, req.headers.authorization)
+    debug('target hit %s %s %o', req.method, req._parsedUrl.path, req.headers)
 
     switch (req._parsedUrl.pathname) {
 
@@ -33,7 +33,6 @@ module.exports.start = (keys) => {
         break
 
       case '/secured':
-      {
         if (!req.headers.authorization) return res.statusCode = 401, res.end('unauthorized')
         const token = authHeaderRegex.exec(req.headers.authorization)[1]
         jwt.verify(token, keys.publicKey, jwtOptions, (err) => {
@@ -41,16 +40,16 @@ module.exports.start = (keys) => {
           res.end('secured')
         })
         break
-      }
 
       case '/oauth/authorize':
-
-        res.writeHead(302, { location: 'http://localhost:3000/auth/sso/callback?code=l33t' })
+        const query = require('url').parse(req.url, true).query
+        const state = encodeURIComponent(query.state)
+        const redirectUri = `${query.redirect_uri}?state=${state}&code=l33t`
+        res.writeHead(302, { location: redirectUri })
         res.end()
         break
 
       case '/oauth/token':
-
         if (req.body.refresh_token) {
           jwt.verify(req.body.refresh_token, keys.publicKey, jwtOptions, (err) => {
             if (err) return next(err)
