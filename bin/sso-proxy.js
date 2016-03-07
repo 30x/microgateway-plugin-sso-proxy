@@ -5,6 +5,13 @@
 const proxy = require('../test/helpers/proxy')
 const config = require('config')
 
+// make this work in Passenger even if creating a fake target
+// see: https://www.phusionpassenger.com/library/indepth/nodejs/reverse_port_binding.html
+if (typeof(PhusionPassenger) !== 'undefined' && !config.proxies[0].url) {
+  PhusionPassenger.configure({ autoInstall: false });
+  config.edgemicro.port = 'passenger'
+}
+
 getTarget()
   .then(target => {
     console.log(`proxy target: ${target}`)

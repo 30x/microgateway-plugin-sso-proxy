@@ -1,0 +1,5 @@
+{
+  "app_type": "node",
+  "startup_file": "bin/sso-proxy.js",
+  "log_level": 3
+}
