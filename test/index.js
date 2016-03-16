@@ -242,10 +242,30 @@ describe('oauth-proxy', () => {
         })
     })
 
-    it('should properly handle the oauth flow with redirect to custom url', function(done) {
+    it('should properly handle the oauth flow with redirect to custom url set by client', function(done) {
       request(this.server)
         .get('/secured')
         .set('x-restart-url', '/unsecured')
+        .expect(401)
+        .expect('location', this.locationRedirect)
+        .end((err, res) => {
+          if (err) return done(err)
+
+          superagent.agent()
+            .get(res.headers['location'])
+            .redirects(2)
+            .end((err, res) => {
+              res.statusCode.should.eql(200)
+              res.text.should.eql('unsecured')
+              done()
+            })
+        })
+    })
+
+    it('should properly handle the oauth flow with redirect to custom url set by target', function(done) {
+      request(this.server)
+        .get('/secured')
+        .set('x-restart-url-from-target', '/unsecured')
         .expect(401)
         .expect('location', this.locationRedirect)
         .end((err, res) => {

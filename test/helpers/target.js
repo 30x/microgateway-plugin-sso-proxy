@@ -33,7 +33,13 @@ module.exports.start = (keys, port) => {
         break
 
       case '/secured':
-        if (!req.headers.authorization) return res.statusCode = 401, res.end('unauthorized')
+        if (!req.headers.authorization) {
+          if (req.headers['x-restart-url-from-target']) {
+            res.setHeader('x-restart-url', req.headers['x-restart-url-from-target'])
+          }
+          res.statusCode = 401
+          return res.end('unauthorized')
+        }
         const token = authHeaderRegex.exec(req.headers.authorization)[1]
         jwt.verify(token, keys.publicKey, jwtOptions, (err) => {
           if (err) return next(err)
