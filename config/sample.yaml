@@ -8,9 +8,12 @@ proxies:
   # put a target URL here (or leave blank for dummy target server)
   url:
 sso:
-  # put the JWT public key here
+  # used to retrieve public key on startup if public_key isn't specified directly
   #   e2e:        https://login.e2e.apigee.net/token_key
-  #   production: https://login.apigee.com/token_key (this key is production)
+  #   production: https://login.apigee.com/token_key
+  public_key_url: https://login.e2e.apigee.net/token_key
+  # put the JWT public key here to avoid request at startup
+  #   note: the key below is the current production key as of this moment
   public_key: |
     -----BEGIN PUBLIC KEY-----
     MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuM71moVIzpiBY+bZ/H93

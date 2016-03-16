@@ -13,7 +13,7 @@ const jwtOptions = {
   issuer: undefined
 }
 
-module.exports.start = (keys) => {
+module.exports.start = (keys, port) => {
   const app = connect()
 
   app.use(bodyParser)
@@ -93,7 +93,7 @@ module.exports.start = (keys) => {
 
   return new Promise((resolve, reject) => {
     const server = http.createServer(app)
-    server.listen((err) => {
+    server.listen(port, (err) => {
       if (err) return reject(err)
       app.port = server.address().port
       debug(`target listening on port ${app.port}`)
