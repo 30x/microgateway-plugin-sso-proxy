@@ -11,10 +11,11 @@
     "debug": "^2.2.0",
     "js-yaml": "^3.5.3",
     "jsonwebtoken": "^5.5.4",
+    "microgateway-core": "^2.0.14",
+    "mkdirp": "^0.5.1",
     "passport": "^0.3.2",
     "passport-oauth": "^1.0.0",
     "passport-oauth2-refresh": "^1.0.0",
-    "microgateway-core": "^2.0.14",
     "superagent": "^1.7.2"
   },
   "devDependencies": {
