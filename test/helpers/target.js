@@ -14,6 +14,7 @@ const jwtOptions = {
 }
 
 module.exports.start = (keys, port) => {
+  if (!port) port = 0
   const app = connect()
 
   app.use(bodyParser)
