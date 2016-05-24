@@ -1,0 +1,38 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sso-proxy-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sso-proxy
+        routable: "true"
+      annotations:
+        publicHosts: sso.k8s.local
+        publicPaths: 3000:/
+    spec:
+      containers:
+        - name: sso-proxy
+          image: thirtyx/sso-proxy:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: SSO_PORT
+              value: "3000"
+            - name: SSO_PUBLIC_KEY_URL
+              value: https://login.apigee.com/token_key
+            - name: SSO_CLIENT_ID
+              value: ssoproxy
+            - name: SSO_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sso
+                  key: client-secret
+            - name: SSO_AUTH_URL
+              value: https://login.apigee.com/oauth/authorize
+            - name: SSO_TOKEN_URL
+              value: https://login.apigee.com/oauth/token
+            - name: SSO_CALLBACK_URL
+              value: http://sso.k8s.local/auth/sso/callback
