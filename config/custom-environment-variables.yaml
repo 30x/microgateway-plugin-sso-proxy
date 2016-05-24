@@ -3,6 +3,7 @@ edgemicro:
   port: SSO_PORT
 sso:
   public_key: SSO_PUBLIC_KEY
+  public_key_url: SSO_PUBLIC_KEY_URL
   oauth:
     clientID: SSO_CLIENT_ID
     clientSecret: SSO_CLIENT_SECRET
