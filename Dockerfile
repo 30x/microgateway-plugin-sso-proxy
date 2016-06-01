@@ -4,10 +4,9 @@ FROM node:4-onbuild
 RUN echo 'edgemicro:\n\
   logging:\n\
     level: warn\n\
-proxies:\n\
-- base_path: /\n\
-  # put a target URL here (or leave blank for dummy target server)\n\
-  url:\n\
+headers:\n\
+  # Retain the originally requested Host header\n\
+  host: false\n\
 ' > /usr/src/app/config/default.yaml
 
 EXPOSE 3000
