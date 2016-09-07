@@ -4,7 +4,7 @@ const connect = require('connect')
 const http = require('http')
 const debug = require('debug')('plugin:sso-proxy')
 const jwt = require('jsonwebtoken')
-const authHeaderRegex = /Bearer (.+)/
+const authHeaderRegex = /Bearer (.+)/i
 const bodyParser = require('body-parser').urlencoded({ extended: false })
 const jwtOptions = {
   algorithms: ['RS256'],

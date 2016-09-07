@@ -142,6 +142,15 @@ describe('oauth-proxy', () => {
         .expect('location', this.locationRedirect)
         .end(done)
     })
+
+    it('should allow valid access token with mixed "Bearer" casing (Issue 17)', function(done) {
+      const token = createJWTToken(this.keys);
+      request(this.server)
+        .get('/unsecured')
+        .set('Authorization', `BeArEr ${token}`)
+        .expect(200)
+        .end(done)
+    })
   })
 
   describe('browser cookie', () => {
