@@ -12,42 +12,17 @@ const fs = require('fs')
 
 // The rest of this module is written in 'Promises' style. Someone with the motivation might want to convert this function to that style
 function getHostIPThen(callback) {
-  var token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token').toString()
-  var cert = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt').toString()
-  var ns = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/namespace').toString()
-  var podName = process.env.POD_NAME
-
-  var headers = {
-      Authorization: `Bearer ${token}`
-  }
-  var options = {
-    protocol: 'https:',
-    hostname: 'kubernetes.default',
-    cert: cert,
-    rejectUnauthorized: false,
-    path: `/api/v1/namespaces/${ns}/pods/${podName}`,
-    method: 'GET',
-    headers: headers
-  }
-  var clientReq = https.request(options, function(res) {
-    res.setEncoding('utf8')
-    var body = ''
-    res.on('data', chunk => body += chunk)
-    res.on('end', function() {
-      if (res.statusCode == 200) {
-        callback(null, JSON.parse(body).status.hostIP)
-      } else {
-        var err = `http-helper-functions: unable to resolve Host IP. statusCode: ${res.statusCode} body: ${body}`
-        console.log(err)
-        callback(err)
-      }
-    })
+  fs.readFile('/proc/net/route', function (error, data) {
+    if (error) {
+      console.log('unable to retrieve Kubernetes hostIP from /proc/net/route.',  error)
+      callback(error)
+    } else {
+      var hexHostIP = data.toString().split('\n')[1].split('\t')[2]
+      var hostIP = [3,2,1,0].map((i) => parseInt(hexHostIP.slice(i*2,i*2+2), 16)).join('.')
+      console.log(`retrieved Kubernetes hostIP: ${hostIP} from /proc/net/route`)
+      callback(null, hostIP)
+    }
   })
-  clientReq.on('error', function (err) {
-    console.log(`http-helper-functions: unable to resolve Host IP: error ${err}`)
-    callback(err)
-  })
-  clientReq.end()
 }
 
 // make this work in Passenger even if creating a fake target
