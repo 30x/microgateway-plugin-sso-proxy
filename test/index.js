@@ -352,11 +352,47 @@ describe('oauth-proxy', () => {
     })
   })
 
+  describe('/sessioninfo', function() {
+
+    it('should allow valid access token in authorization header to access endpoint', function(done) {
+      const token = createJWTToken(this.keys);
+      request(this.server)
+        .get('/sessioninfo')
+        .set('Authorization', `Bearer ${token}`)
+        .expect('Content-Type', /json/)
+        .expect(200, { email: 'example@example.com' })
+        .end(done)
+    })
+
+    it('should allow valid access token in cookie to access endpoint', function(done) {
+      const token = createJWTToken(this.keys);
+      var cookieHeader = cookie.serialize('access_token', token)
+      request(this.server)
+        .get('/sessioninfo')
+        .set('Cookie', cookieHeader)
+        .expect('Content-Type', /json/)
+        .expect(200, { email: 'example@example.com' })
+        .end(done)
+    })
+
+    it('should reject invalid authorization header', function(done) {
+      request(this.server)
+        .get('/sessioninfo')
+        .set('Authorization', 'Like, whatever, man')
+        .expect(400)
+        .end(done)
+    })
+
+  })
+
 })
 
 function createJWTToken(keys, expiresIn, includeRefresh) {
   const options = { algorithm: 'RS256', expiresIn: expiresIn }
-  const payload = { test: 'test' }
+  const payload = {
+    test: 'test',
+    email: 'example@example.com'
+  }
   return jwt.sign(payload, keys.privateKey, options)
 }
 
